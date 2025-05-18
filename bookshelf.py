@@ -162,8 +162,8 @@ class Bookshelf(QWidget):
             root_item.setFlags(Qt.NoItemFlags)  # Make unselectable
             return
         
-        # Sort folders by name
-        sorted_folders = sorted(self.manga_folders, key=lambda x: os.path.basename(x).lower())
+        # Use natural_sort_key for folder names to ensure proper sorting with numbers
+        sorted_folders = sorted(self.manga_folders, key=lambda x: natural_sort_key(os.path.basename(x)))
         
         for folder_path in sorted_folders:
             try:
@@ -175,6 +175,7 @@ class Bookshelf(QWidget):
                 root_item.setData(0, Qt.UserRole, folder_path)  # Store folder path
                 
                 # Get manga directories within this folder (subfolders with PDFs)
+                # get_manga_directories now uses natural sort internally
                 manga_dirs = get_manga_directories(folder_path)
                 
                 for manga_dir in manga_dirs:
@@ -432,8 +433,11 @@ class Bookshelf(QWidget):
             empty_item.setFlags(Qt.NoItemFlags)  # Make unselectable
             self.favorites_list.addItem(empty_item)
             return
+        
+        # Sort favorites using natural sort order
+        sorted_favorites = sorted(self.favorites, key=natural_sort_key)
             
-        for manga in self.favorites:
+        for manga in sorted_favorites:
             item = QListWidgetItem(manga)
             item.setIcon(QIcon.fromTheme("emblem-favorite"))
             
@@ -516,10 +520,20 @@ class Bookshelf(QWidget):
             empty_item.setFlags(Qt.NoItemFlags)  # Make unselectable
             self.bookmarks_list.addItem(empty_item)
             return
-            
+        
+        # Sort bookmarks by manga name using natural sort
+        sorted_bookmarks = []
         for key, page in self.bookmarks.items():
             try:
                 manga, volume = key.split('/', 1)
+                sorted_bookmarks.append((manga, volume, page, key))
+            except:
+                continue
+                
+        sorted_bookmarks.sort(key=lambda x: natural_sort_key(x[0]))
+            
+        for manga, volume, page, key in sorted_bookmarks:
+            try:
                 item = QListWidgetItem(f"{manga} - {volume} (ページ {page + 1})")
                 item.setData(Qt.UserRole, key)
                 
