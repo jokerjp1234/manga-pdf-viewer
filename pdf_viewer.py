@@ -59,7 +59,8 @@ class PDFViewer(QWidget):
         self.title_layout.addStretch()
         
         # Page jump button
-        self.page_jump_button = QPushButton("ページ移動")
+        self.page_jump_button = QPushButton("ページ移動 (Ctrl+G)")
+        self.page_jump_button.setToolTip("特定のページに移動します (ショートカット: Ctrl+G)")
         self.page_jump_button.clicked.connect(self.show_page_jump_dialog)
         self.title_layout.addWidget(self.page_jump_button)
         
@@ -114,7 +115,7 @@ class PDFViewer(QWidget):
         page_spinner.setMinimum(1)
         page_spinner.setMaximum(self.total_pages)
         page_spinner.setValue(self.current_page + 1)  # 1-based for display
-        form_layout.addRow("ページ番号 (1-{})".format(self.total_pages), page_spinner)
+        form_layout.addRow(f"ページ番号 (1-{self.total_pages})", page_spinner)
         
         button_layout = QHBoxLayout()
         ok_button = QPushButton("移動", dialog)
@@ -129,6 +130,10 @@ class PDFViewer(QWidget):
         ok_button.clicked.connect(lambda: self.jump_to_page(page_spinner.value() - 1) or dialog.accept())
         cancel_button.clicked.connect(dialog.reject)
         
+        # Set focus to spinner and select all text
+        page_spinner.selectAll()
+        page_spinner.setFocus()
+        
         dialog.exec_()
     
     def jump_to_page(self, page):
@@ -137,6 +142,9 @@ class PDFViewer(QWidget):
         
         Args:
             page: 0-based page index
+            
+        Returns:
+            Boolean indicating success
         """
         if not self.pdf_document:
             return False
@@ -351,19 +359,26 @@ class PDFViewer(QWidget):
         Returns:
             Boolean indicating if event was handled
         """
-        if event.type() == QEvent.KeyPress and self.pdf_document and self.use_arrow_keys:
-            if event.key() == Qt.Key_Right or event.key() == Qt.Key_Down:
-                self.next_page()
+        if event.type() == QEvent.KeyPress and self.pdf_document:
+            # Handle shortcut for page jump (Ctrl+G)
+            if event.key() == Qt.Key_G and event.modifiers() == Qt.ControlModifier:
+                self.show_page_jump_dialog()
                 return True
-            elif event.key() == Qt.Key_Left or event.key() == Qt.Key_Up:
-                self.prev_page()
-                return True
-            elif event.key() == Qt.Key_Home:
-                self.go_to_page(0)
-                return True
-            elif event.key() == Qt.Key_End:
-                self.go_to_page(self.total_pages - 1)
-                return True
+                
+            # Handle arrow keys if enabled
+            if self.use_arrow_keys:
+                if event.key() == Qt.Key_Right or event.key() == Qt.Key_Down:
+                    self.next_page()
+                    return True
+                elif event.key() == Qt.Key_Left or event.key() == Qt.Key_Up:
+                    self.prev_page()
+                    return True
+                elif event.key() == Qt.Key_Home:
+                    self.go_to_page(0)
+                    return True
+                elif event.key() == Qt.Key_End:
+                    self.go_to_page(self.total_pages - 1)
+                    return True
         
         return super().eventFilter(obj, event)
     
@@ -374,6 +389,12 @@ class PDFViewer(QWidget):
         Args:
             event: Key event
         """
+        # Handle shortcut for page jump
+        if self.pdf_document and event.key() == Qt.Key_G and event.modifiers() == Qt.ControlModifier:
+            self.show_page_jump_dialog()
+            return
+            
+        # Handle navigation keys if enabled
         if self.pdf_document and self.use_arrow_keys:
             if event.key() == Qt.Key_Right or event.key() == Qt.Key_Down:
                 self.next_page()
