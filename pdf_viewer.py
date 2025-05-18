@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                             QScrollArea, QPushButton, QMessageBox,
                             QLineEdit, QSpinBox, QDialog, QFormLayout)
 from PyQt5.QtCore import Qt, QEvent, pyqtSignal
-from PyQt5.QtGui import QPixmap, QImage, QFont
+from PyQt5.QtGui import QPixmap, QImage, QFont, QIntValidator
 
 class PDFViewer(QWidget):
     """
@@ -87,9 +87,17 @@ class PDFViewer(QWidget):
         self.prev_button.clicked.connect(self.prev_page)
         controls_layout.addWidget(self.prev_button)
         
-        self.page_label = QLabel("0 / 0")
+        # ページ入力欄
+        self.page_input = QLineEdit()
+        self.page_input.setAlignment(Qt.AlignCenter)
+        self.page_input.setFixedWidth(60)  # 幅を制限
+        self.page_input.setValidator(QIntValidator(1, 9999))  # 1-9999の数値のみ入力可能
+        self.page_input.returnPressed.connect(self.jump_from_input)
+        self.page_input.setToolTip("ページ番号を入力してEnterを押すと、そのページに移動します")
+        controls_layout.addWidget(self.page_input)
+        
+        self.page_label = QLabel("/ 0")
         self.page_label.setAlignment(Qt.AlignCenter)
-        self.page_label.setMinimumWidth(100)
         controls_layout.addWidget(self.page_label)
         
         self.next_button = QPushButton("次のページ")
@@ -97,6 +105,40 @@ class PDFViewer(QWidget):
         controls_layout.addWidget(self.next_button)
         
         layout.addLayout(controls_layout)
+    
+    def jump_from_input(self):
+        """Handle page jump from the input field."""
+        if not self.pdf_document:
+            return
+        
+        try:
+            # Get page number from input (convert to 0-based)
+            page_num = int(self.page_input.text()) - 1
+            
+            # Validate page range
+            if 0 <= page_num < self.total_pages:
+                self.current_page = page_num
+                self.display_page()
+            else:
+                # Invalid page number - reset to current page
+                self.update_page_display()
+                QMessageBox.warning(
+                    self, 
+                    "エラー", 
+                    f"有効なページ番号を入力してください (1-{self.total_pages})"
+                )
+        except ValueError:
+            # Not a number - reset to current page
+            self.update_page_display()
+    
+    def update_page_display(self):
+        """Update the page input and label with current page info."""
+        if self.pdf_document:
+            self.page_input.setText(str(self.current_page + 1))
+            self.page_label.setText(f"/ {self.total_pages}")
+        else:
+            self.page_input.setText("")
+            self.page_label.setText("/ 0")
     
     def show_page_jump_dialog(self):
         """Show dialog to jump to a specific page."""
@@ -212,6 +254,9 @@ class PDFViewer(QWidget):
             else:
                 self.current_page = 0
             
+            # Update validator for page input
+            self.page_input.validator().setTop(self.total_pages)
+            
             # Display first page
             self.display_page()
             
@@ -268,8 +313,8 @@ class PDFViewer(QWidget):
             # Display the image
             self.image_label.setPixmap(QPixmap.fromImage(qimage))
             
-            # Update page number
-            self.page_label.setText(f"{self.current_page + 1} / {self.total_pages}")
+            # Update page number and input field
+            self.update_page_display()
             
             # Emit signal for page change
             self.page_changed.emit(self.current_page, self.total_pages)
@@ -418,7 +463,7 @@ class PDFViewer(QWidget):
             self.pdf_document = None
             self.current_page = 0
             self.total_pages = 0
-            self.page_label.setText("0 / 0")
+            self.update_page_display()
             self.image_label.clear()
             
             # Reset title
