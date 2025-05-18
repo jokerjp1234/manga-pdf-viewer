@@ -1,8 +1,9 @@
 import fitz  # PyMuPDF
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                            QScrollArea, QPushButton, QMessageBox)
+                            QScrollArea, QPushButton, QMessageBox,
+                            QLineEdit, QSpinBox, QDialog, QFormLayout)
 from PyQt5.QtCore import Qt, QEvent, pyqtSignal
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtGui import QPixmap, QImage, QFont
 
 class PDFViewer(QWidget):
     """
@@ -46,6 +47,24 @@ class PDFViewer(QWidget):
         # Main layout
         layout = QVBoxLayout(self)
         
+        # Title bar to show current manga and volume
+        self.title_layout = QHBoxLayout()
+        
+        self.manga_title_label = QLabel("漫画が選択されていません")
+        self.manga_title_label.setFont(QFont("Arial", 10, QFont.Bold))
+        self.manga_title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.title_layout.addWidget(self.manga_title_label)
+        
+        # Stretch to push the page jump button to the right
+        self.title_layout.addStretch()
+        
+        # Page jump button
+        self.page_jump_button = QPushButton("ページ移動")
+        self.page_jump_button.clicked.connect(self.show_page_jump_dialog)
+        self.title_layout.addWidget(self.page_jump_button)
+        
+        layout.addLayout(self.title_layout)
+        
         # PDF display
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -68,6 +87,8 @@ class PDFViewer(QWidget):
         controls_layout.addWidget(self.prev_button)
         
         self.page_label = QLabel("0 / 0")
+        self.page_label.setAlignment(Qt.AlignCenter)
+        self.page_label.setMinimumWidth(100)
         controls_layout.addWidget(self.page_label)
         
         self.next_button = QPushButton("次のページ")
@@ -75,6 +96,64 @@ class PDFViewer(QWidget):
         controls_layout.addWidget(self.next_button)
         
         layout.addLayout(controls_layout)
+    
+    def show_page_jump_dialog(self):
+        """Show dialog to jump to a specific page."""
+        if not self.pdf_document:
+            QMessageBox.information(self, "情報", "PDFが開かれていません。")
+            return
+            
+        dialog = QDialog(self)
+        dialog.setWindowTitle("ページ移動")
+        dialog.setMinimumWidth(250)
+        
+        form_layout = QFormLayout(dialog)
+        
+        # Use a spinner with limits
+        page_spinner = QSpinBox(dialog)
+        page_spinner.setMinimum(1)
+        page_spinner.setMaximum(self.total_pages)
+        page_spinner.setValue(self.current_page + 1)  # 1-based for display
+        form_layout.addRow("ページ番号 (1-{})".format(self.total_pages), page_spinner)
+        
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("移動", dialog)
+        cancel_button = QPushButton("キャンセル", dialog)
+        
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        
+        form_layout.addRow("", button_layout)
+        
+        # Connect buttons
+        ok_button.clicked.connect(lambda: self.jump_to_page(page_spinner.value() - 1) or dialog.accept())
+        cancel_button.clicked.connect(dialog.reject)
+        
+        dialog.exec_()
+    
+    def jump_to_page(self, page):
+        """
+        Jump to the specified page.
+        
+        Args:
+            page: 0-based page index
+        """
+        if not self.pdf_document:
+            return False
+            
+        if 0 <= page < self.total_pages:
+            self.current_page = page
+            self.display_page()
+            return True
+            
+        return False
+    
+    def update_title_display(self):
+        """Update the title display with current manga and volume information."""
+        if self.current_manga and self.current_volume:
+            self.manga_title_label.setText(f"現在読んでいる漫画: {self.current_manga} - {self.current_volume}")
+        else:
+            self.manga_title_label.setText("漫画が選択されていません")
     
     def load_pdf(self, manga_name, manga_path, volume_name):
         """
@@ -93,6 +172,9 @@ class PDFViewer(QWidget):
         self.current_manga = manga_name
         self.current_volume = volume_name
         pdf_path = os.path.join(manga_path, volume_name)
+        
+        # Update title display
+        self.update_title_display()
         
         # Close any open document
         if self.pdf_document:
@@ -317,3 +399,8 @@ class PDFViewer(QWidget):
             self.total_pages = 0
             self.page_label.setText("0 / 0")
             self.image_label.clear()
+            
+            # Reset title
+            self.current_manga = None
+            self.current_volume = None
+            self.update_title_display()
