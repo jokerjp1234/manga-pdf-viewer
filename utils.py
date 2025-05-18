@@ -53,7 +53,7 @@ def is_valid_manga_directory(directory):
     
 def get_manga_directories(root_directory):
     """
-    Get list of manga directories within a root directory, sorted alphabetically.
+    Get list of manga directories within a root directory, sorted by natural order.
     
     Args:
         root_directory: Root directory to search
@@ -70,5 +70,5 @@ def get_manga_directories(root_directory):
         if os.path.isdir(full_path) and is_valid_manga_directory(full_path):
             manga_dirs.append(d)
             
-    # Sort alphabetically, case-insensitive
-    return sorted(manga_dirs, key=lambda x: x.lower())
+    # Sort using natural sort order (so '10巻' comes after '2巻' not before)
+    return sorted(manga_dirs, key=natural_sort_key)
