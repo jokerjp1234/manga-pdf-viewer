@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtGui import QIcon, QFont, QPixmap
 
 from thumbnail_loader import ThumbnailLoader
-from utils import natural_sort_key, get_pdf_files, get_manga_directories
+from utils import natural_sort_key, japanese_sort_key, get_pdf_files, get_manga_directories
 
 class Bookshelf(QWidget):
     """
@@ -162,8 +162,8 @@ class Bookshelf(QWidget):
             root_item.setFlags(Qt.NoItemFlags)  # Make unselectable
             return
         
-        # Use natural_sort_key for folder names to ensure proper sorting with numbers
-        sorted_folders = sorted(self.manga_folders, key=lambda x: natural_sort_key(os.path.basename(x)))
+        # Sort folders using Japanese sort for proper あいうえお order
+        sorted_folders = sorted(self.manga_folders, key=lambda x: japanese_sort_key(os.path.basename(x)))
         
         for folder_path in sorted_folders:
             try:
@@ -175,7 +175,7 @@ class Bookshelf(QWidget):
                 root_item.setData(0, Qt.UserRole, folder_path)  # Store folder path
                 
                 # Get manga directories within this folder (subfolders with PDFs)
-                # get_manga_directories now uses natural sort internally
+                # get_manga_directories now uses Japanese sort internally
                 manga_dirs = get_manga_directories(folder_path)
                 
                 for manga_dir in manga_dirs:
@@ -245,8 +245,7 @@ class Bookshelf(QWidget):
             if widget:
                 widget.deleteLater()
         
-        # Sort files in natural order (case-insensitive)
-        files.sort(key=lambda x: natural_sort_key(x.lower()))
+        # Files are already sorted by get_pdf_files using japanese_sort_key
         
         # Add volumes to grid
         row, col = 0, 0
@@ -434,8 +433,8 @@ class Bookshelf(QWidget):
             self.favorites_list.addItem(empty_item)
             return
         
-        # Sort favorites using natural sort order
-        sorted_favorites = sorted(self.favorites, key=natural_sort_key)
+        # Sort favorites using Japanese sort order
+        sorted_favorites = sorted(self.favorites, key=japanese_sort_key)
             
         for manga in sorted_favorites:
             item = QListWidgetItem(manga)
@@ -521,7 +520,7 @@ class Bookshelf(QWidget):
             self.bookmarks_list.addItem(empty_item)
             return
         
-        # Sort bookmarks by manga name using natural sort
+        # Sort bookmarks by manga name using Japanese sort
         sorted_bookmarks = []
         for key, page in self.bookmarks.items():
             try:
@@ -530,7 +529,7 @@ class Bookshelf(QWidget):
             except:
                 continue
                 
-        sorted_bookmarks.sort(key=lambda x: natural_sort_key(x[0]))
+        sorted_bookmarks.sort(key=lambda x: japanese_sort_key(x[0]))
             
         for manga, volume, page, key in sorted_bookmarks:
             try:
