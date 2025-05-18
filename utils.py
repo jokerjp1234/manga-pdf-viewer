@@ -17,6 +17,34 @@ def natural_sort_key(s):
     """
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
+def get_first_char_category(s):
+    """
+    Get a category number for the first character of a string for sorting purposes.
+    
+    Args:
+        s: String to categorize
+        
+    Returns:
+        Integer category (1=hiragana/katakana, 2=other Japanese, 3=alphanumeric, 4=other)
+    """
+    if not s:
+        return 4
+        
+    first_char = s[0]
+    
+    # Hiragana & Katakana (あ-ん, ア-ン)
+    if ('\u3040' <= first_char <= '\u309F') or ('\u30A0' <= first_char <= '\u30FF'):
+        return 1
+    # Other Japanese characters (kanji, etc.)
+    elif '\u4E00' <= first_char <= '\u9FFF':  
+        return 2
+    # Alphanumeric
+    elif first_char.isalnum():
+        return 3
+    # Everything else
+    else:
+        return 4
+
 def japanese_sort_key(s):
     """
     Sort strings in Japanese alphabetical order (あいうえお order).
@@ -26,23 +54,24 @@ def japanese_sort_key(s):
         s: String to get sort key for
         
     Returns:
-        Key to be used for sorting
+        Tuple for sorting that guarantees consistent sorting regardless of input
     """
+    if not isinstance(s, str):
+        # If input is not a string, convert it to string for safety
+        s = str(s)
+    
     # Convert to lowercase and normalize
     s = s.lower()
-    
-    # For strings with numbers, use natural sort key but wrap in tuple
-    # to make it compatible with other string comparisons
-    if any(c.isdigit() for c in s):
-        # Convert natural_sort_key result to a tuple for compatibility
-        return tuple(natural_sort_key(s))
-    
-    # For Japanese strings, convert to romaji
     normalized = unicodedata.normalize('NFKC', s)
     
+    # Get character category for primary sorting
+    char_category = get_first_char_category(normalized)
+    
+    # For strings with numbers, use natural sort
+    if any(c.isdigit() for c in s):
+        return (char_category, 0, tuple(natural_sort_key(s)))
+    
     # Map hiragana/katakana to their position in the Japanese alphabet
-    # This is a very simplified approach - for a more accurate sort,
-    # you might want to use a dedicated Japanese language library
     japanese_char_order = {
         # あ行
         'あ': 'a01', 'い': 'a02', 'う': 'a03', 'え': 'a04', 'お': 'a05',
@@ -116,7 +145,11 @@ def japanese_sort_key(s):
             # For other characters, use the character itself
             result.append(char)
             
-    return ''.join(result)
+    romaji_str = ''.join(result)
+    
+    # Return a tuple with the character category and the romaji representation
+    # This guarantees that we always return a consistent sortable type
+    return (char_category, 1, romaji_str)
 
 def get_pdf_files(directory):
     """
