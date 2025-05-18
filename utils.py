@@ -26,14 +26,16 @@ def japanese_sort_key(s):
         s: String to get sort key for
         
     Returns:
-        String to be used as sort key
+        Key to be used for sorting
     """
     # Convert to lowercase and normalize
     s = s.lower()
     
-    # For strings with numbers, use natural sort first
+    # For strings with numbers, use natural sort key but wrap in tuple
+    # to make it compatible with other string comparisons
     if any(c.isdigit() for c in s):
-        return natural_sort_key(s)
+        # Convert natural_sort_key result to a tuple for compatibility
+        return tuple(natural_sort_key(s))
     
     # For Japanese strings, convert to romaji
     normalized = unicodedata.normalize('NFKC', s)
